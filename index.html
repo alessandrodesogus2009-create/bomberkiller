@@ -5,57 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BOMBERKILLER!</title>
 
-<link rel="manifest" href="manifest.json">
-
 <style>
-body {
-  margin: 0;
-  background: radial-gradient(circle at top, #1a0033, #000);
-  color: #fff;
-  font-family: 'Arial Black', Arial, sans-serif;
-  text-align: center;
+body{
+  margin:0;
+  background:#0b0b0b;
+  color:white;
+  font-family:Arial, sans-serif;
+  text-align:center;
 }
-
-h1 {
-  color: #ff004c;
-  text-shadow: 0 0 15px #ff004c;
+h1{color:#ff0033;}
+button{
+  padding:15px 25px;
+  font-size:18px;
+  border:none;
+  border-radius:10px;
+  background:#ff0033;
+  color:white;
+  margin:10px;
+  cursor:pointer;
 }
-
-button {
-  padding: 16px 28px;
-  font-size: 18px;
-  border-radius: 14px;
-  border: none;
-  margin: 10px;
-  cursor: pointer;
-  background: linear-gradient(135deg, #ff004c, #ff7300);
-  color: white;
+.card{
+  background:#1a1a1a;
+  padding:20px;
+  margin:20px;
+  border-radius:12px;
 }
-
-.card {
-  background: rgba(0,0,0,0.7);
-  margin: 20px;
-  padding: 25px;
-  border-radius: 18px;
-  box-shadow: 0 0 20px #ff004c;
+.hidden{display:none;}
+.timer{
+  font-size:50px;
+  color:#00ffd5;
 }
-
-.hidden { display: none; }
-
-.timer {
-  font-size: 60px;
-  color: #00ffd5;
-  text-shadow: 0 0 20px #00ffd5;
-}
-
-.warning {
-  color: gold;
-  font-size: 20px;
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  50% { opacity: 0.3; }
+.warning{
+  color:gold;
+  font-weight:bold;
 }
 </style>
 </head>
@@ -64,6 +46,7 @@ button {
 
 <h1>💣 BOMBERKILLER!</h1>
 
+<!-- SETUP -->
 <div id="setup">
   <p>Numero giocatori</p>
   <input type="number" id="numPlayers" value="10" min="5" max="15">
@@ -71,89 +54,142 @@ button {
   <button onclick="startGame()">INIZIA</button>
 </div>
 
+<!-- RUOLI -->
 <div id="roleScreen" class="hidden">
-  <h2>Giocatore <span id="playerIndex"></span></h2>
-  <button onclick="revealRole()">Mostra il mio ruolo</button>
+  <h2>Giocatore <span id="playerNum"></span></h2>
+  <button onclick="showRole()">Mostra il mio ruolo</button>
   <div id="roleCard" class="card hidden"></div>
-  <button id="nextBtn" class="hidden" onclick="nextPlayer()">PASSA</button>
+  <button id="nextBtn" class="hidden" onclick="nextPlayer()">PASSA IL TELEFONO</button>
 </div>
 
+<!-- TIMER -->
 <div id="timerScreen" class="hidden">
+  <h2>Discussione</h2>
   <div id="timer" class="timer">03:00</div>
-  <p id="victimHint" class="warning hidden">⚠️ Vittima: dai UN indizio!</p>
+  <p id="hint" class="warning hidden">
+    ⚠️ Vittima: puoi dare ORA un indizio!
+  </p>
 </div>
 
+<!-- VOTO -->
 <div id="voteScreen" class="hidden">
-  <h2>VOTA L’ASSASSINO</h2>
+  <h2>🗳️ VOTAZIONE</h2>
+  <p>Votate l’Assassino</p>
   <div id="voteButtons"></div>
 </div>
 
+<!-- RISULTATO -->
 <div id="resultScreen" class="hidden">
   <h2 id="resultTitle"></h2>
   <p id="resultText"></p>
 </div>
 
-<audio id="startSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
-<audio id="warningSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-
 <script>
-let roles=[], votes=[], currentPlayer=0, assassin, victim, secret;
-const secrets=["Siamo al cinema","Siamo al mare","Stiamo facendo una festa","Siamo a un matrimonio"];
+let roles = [];
+let votes = [];
+let currentPlayer = 0;
+let votePlayer = 0;
+let assassin = -1;
+let victim = -1;
+let secret = "";
 
-function vibrate(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
+const secrets = [
+  "Siamo al cinema",
+  "Siamo in gita al mare",
+  "Stiamo organizzando una festa",
+  "Siamo a un matrimonio",
+  "Siamo in campeggio"
+];
 
+// START
 function startGame(){
-  document.getElementById("startSound").play();
-  vibrate(200);
-
-  let n = numPlayers.value;
+  let n = parseInt(numPlayers.value);
   roles = Array(n).fill("Civile");
-  assassin = Math.floor(Math.random()*n);
-  roles[assassin]="Assassino";
-  do { victim=Math.floor(Math.random()*n); } while(victim===assassin);
-  roles[victim]="Vittima";
-  secret = secrets[Math.floor(Math.random()*secrets.length)];
   votes = Array(n).fill(0);
+
+  assassin = Math.floor(Math.random()*n);
+  roles[assassin] = "Assassino";
+
+  do{
+    victim = Math.floor(Math.random()*n);
+  } while(victim === assassin);
+  roles[victim] = "Vittima";
+
+  secret = secrets[Math.floor(Math.random()*secrets.length)];
 
   setup.classList.add("hidden");
   roleScreen.classList.remove("hidden");
-  updateRole();
+  updateRoleScreen();
 }
 
-function updateRole(){
-  playerIndex.textContent=currentPlayer+1;
+// RUOLI
+function updateRoleScreen(){
+  playerNum.textContent = currentPlayer + 1;
   roleCard.classList.add("hidden");
   nextBtn.classList.add("hidden");
 }
 
-function revealRole(){
-  let r=roles[currentPlayer];
-  roleCard.innerHTML = `<h3>${r}</h3>` + (r!=="Assassino"?`<p>${secret}</p>`:`<p>❌ Nessuna vicenda</p>`);
+function showRole(){
+  let r = roles[currentPlayer];
+  let text = "";
+
+  if(r === "Civile"){
+    text = `
+      <h3>👤 CIVILE</h3>
+      <p>Vicenda segreta:</p>
+      <p><b>${secret}</b></p>
+      <p>Scopri chi non la conosce</p>
+    `;
+  }
+
+  if(r === "Vittima"){
+    text = `
+      <h3>🩸 VITTIMA</h3>
+      <p>Vicenda segreta:</p>
+      <p><b>${secret}</b></p>
+      <p>⚠️ Non parlare fino agli ultimi 30 secondi</p>
+    `;
+  }
+
+  if(r === "Assassino"){
+    text = `
+      <h3>💀 ASSASSINO</h3>
+      <p>❌ Non conosci la vicenda</p>
+      <p>Mimetizzati e inganna gli altri</p>
+    `;
+  }
+
+  roleCard.innerHTML = text;
   roleCard.classList.remove("hidden");
   nextBtn.classList.remove("hidden");
-  vibrate(100);
 }
 
 function nextPlayer(){
   currentPlayer++;
-  if(currentPlayer>=roles.length){
+  if(currentPlayer >= roles.length){
     roleScreen.classList.add("hidden");
     startTimer();
-  } else updateRole();
+  } else {
+    updateRoleScreen();
+  }
 }
 
+// TIMER
 function startTimer(){
   timerScreen.classList.remove("hidden");
-  let t=180;
-  let interval=setInterval(()=>{
-    t--;
-    timer.textContent=`${String(Math.floor(t/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`;
-    if(t===30){
-      victimHint.classList.remove("hidden");
-      warningSound.play();
-      vibrate([200,100,200]);
+  let time = 180;
+
+  let interval = setInterval(()=>{
+    time--;
+    let m = String(Math.floor(time/60)).padStart(2,"0");
+    let s = String(time%60).padStart(2,"0");
+    timer.textContent = `${m}:${s}`;
+
+    if(time === 30){
+      hint.classList.remove("hidden");
     }
-    if(t<=0){
+
+    if(time <= 0){
       clearInterval(interval);
       timerScreen.classList.add("hidden");
       startVote();
@@ -161,29 +197,48 @@ function startTimer(){
   },1000);
 }
 
+// VOTO
 function startVote(){
+  votePlayer = 0;
   voteScreen.classList.remove("hidden");
-  voteButtons.innerHTML="";
+  voteButtons.innerHTML = "";
+
   roles.forEach((r,i)=>{
-    if(i!==victim){
-      let b=document.createElement("button");
-      b.textContent="Giocatore "+(i+1);
-      b.onclick=()=>{votes[i]++; currentPlayer++; if(currentPlayer>=roles.length) showResult();};
+    if(i !== victim){
+      let b = document.createElement("button");
+      b.textContent = "Giocatore " + (i+1);
+      b.onclick = ()=>castVote(i);
       voteButtons.appendChild(b);
     }
   });
 }
 
+function castVote(i){
+  votes[i]++;
+  votePlayer++;
+
+  if(votePlayer >= roles.length - 1){
+    showResult();
+  } else {
+    alert("Voto registrato. Passa il telefono.");
+  }
+}
+
+// RISULTATO
 function showResult(){
   voteScreen.classList.add("hidden");
   resultScreen.classList.remove("hidden");
-  let max=votes.indexOf(Math.max(...votes));
-  if(max===assassin){
-    resultTitle.textContent="🎉 VINCONO I CIVILI!";
+
+  let maxVotes = Math.max(...votes);
+  let voted = votes.indexOf(maxVotes);
+
+  if(voted === assassin){
+    resultTitle.textContent = "🎉 VINCONO I CIVILI!";
   } else {
-    resultTitle.textContent="💀 VINCE L’ASSASSINO!";
+    resultTitle.textContent = "💀 VINCE L’ASSASSINO!";
   }
-  resultText.textContent="Assassino: Giocatore "+(assassin+1);
+
+  resultText.textContent = "L’Assassino era il Giocatore " + (assassin + 1);
 }
 </script>
 
