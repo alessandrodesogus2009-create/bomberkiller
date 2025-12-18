@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOMBERKILLER!</title>
+
+<link rel="manifest" href="manifest.json">
+
+<style>
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #1a0033, #000);
+  color: #fff;
+  font-family: 'Arial Black', Arial, sans-serif;
+  text-align: center;
+}
+
+h1 {
+  color: #ff004c;
+  text-shadow: 0 0 15px #ff004c;
+}
+
+button {
+  padding: 16px 28px;
+  font-size: 18px;
+  border-radius: 14px;
+  border: none;
+  margin: 10px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #ff004c, #ff7300);
+  color: white;
+}
+
+.card {
+  background: rgba(0,0,0,0.7);
+  margin: 20px;
+  padding: 25px;
+  border-radius: 18px;
+  box-shadow: 0 0 20px #ff004c;
+}
+
+.hidden { display: none; }
+
+.timer {
+  font-size: 60px;
+  color: #00ffd5;
+  text-shadow: 0 0 20px #00ffd5;
+}
+
+.warning {
+  color: gold;
+  font-size: 20px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0.3; }
+}
+</style>
+</head>
+
+<body>
+
+<h1>💣 BOMBERKILLER!</h1>
+
+<div id="setup">
+  <p>Numero giocatori</p>
+  <input type="number" id="numPlayers" value="10" min="5" max="15">
+  <br>
+  <button onclick="startGame()">INIZIA</button>
+</div>
+
+<div id="roleScreen" class="hidden">
+  <h2>Giocatore <span id="playerIndex"></span></h2>
+  <button onclick="revealRole()">Mostra il mio ruolo</button>
+  <div id="roleCard" class="card hidden"></div>
+  <button id="nextBtn" class="hidden" onclick="nextPlayer()">PASSA</button>
+</div>
+
+<div id="timerScreen" class="hidden">
+  <div id="timer" class="timer">03:00</div>
+  <p id="victimHint" class="warning hidden">⚠️ Vittima: dai UN indizio!</p>
+</div>
+
+<div id="voteScreen" class="hidden">
+  <h2>VOTA L’ASSASSINO</h2>
+  <div id="voteButtons"></div>
+</div>
+
+<div id="resultScreen" class="hidden">
+  <h2 id="resultTitle"></h2>
+  <p id="resultText"></p>
+</div>
+
+<audio id="startSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+<audio id="warningSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+<script>
+let roles=[], votes=[], currentPlayer=0, assassin, victim, secret;
+const secrets=["Siamo al cinema","Siamo al mare","Stiamo facendo una festa","Siamo a un matrimonio"];
+
+function vibrate(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
+
+function startGame(){
+  document.getElementById("startSound").play();
+  vibrate(200);
+
+  let n = numPlayers.value;
+  roles = Array(n).fill("Civile");
+  assassin = Math.floor(Math.random()*n);
+  roles[assassin]="Assassino";
+  do { victim=Math.floor(Math.random()*n); } while(victim===assassin);
+  roles[victim]="Vittima";
+  secret = secrets[Math.floor(Math.random()*secrets.length)];
+  votes = Array(n).fill(0);
+
+  setup.classList.add("hidden");
+  roleScreen.classList.remove("hidden");
+  updateRole();
+}
+
+function updateRole(){
+  playerIndex.textContent=currentPlayer+1;
+  roleCard.classList.add("hidden");
+  nextBtn.classList.add("hidden");
+}
+
+function revealRole(){
+  let r=roles[currentPlayer];
+  roleCard.innerHTML = `<h3>${r}</h3>` + (r!=="Assassino"?`<p>${secret}</p>`:`<p>❌ Nessuna vicenda</p>`);
+  roleCard.classList.remove("hidden");
+  nextBtn.classList.remove("hidden");
+  vibrate(100);
+}
+
+function nextPlayer(){
+  currentPlayer++;
+  if(currentPlayer>=roles.length){
+    roleScreen.classList.add("hidden");
+    startTimer();
+  } else updateRole();
+}
+
+function startTimer(){
+  timerScreen.classList.remove("hidden");
+  let t=180;
+  let interval=setInterval(()=>{
+    t--;
+    timer.textContent=`${String(Math.floor(t/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`;
+    if(t===30){
+      victimHint.classList.remove("hidden");
+      warningSound.play();
+      vibrate([200,100,200]);
+    }
+    if(t<=0){
+      clearInterval(interval);
+      timerScreen.classList.add("hidden");
+      startVote();
+    }
+  },1000);
+}
+
+function startVote(){
+  voteScreen.classList.remove("hidden");
+  voteButtons.innerHTML="";
+  roles.forEach((r,i)=>{
+    if(i!==victim){
+      let b=document.createElement("button");
+      b.textContent="Giocatore "+(i+1);
+      b.onclick=()=>{votes[i]++; currentPlayer++; if(currentPlayer>=roles.length) showResult();};
+      voteButtons.appendChild(b);
+    }
+  });
+}
+
+function showResult(){
+  voteScreen.classList.add("hidden");
+  resultScreen.classList.remove("hidden");
+  let max=votes.indexOf(Math.max(...votes));
+  if(max===assassin){
+    resultTitle.textContent="🎉 VINCONO I CIVILI!";
+  } else {
+    resultTitle.textContent="💀 VINCE L’ASSASSINO!";
+  }
+  resultText.textContent="Assassino: Giocatore "+(assassin+1);
+}
+</script>
+
+</body>
+</html>
